@@ -14,8 +14,7 @@ output:
 #Carreguem el fitxer .csv
 dades<-read.csv("human_cachexia.csv")
 library(usethis)
-usethis::edit_git_config()
-
+usethis::use_github()
 ```
 # Resum
 
