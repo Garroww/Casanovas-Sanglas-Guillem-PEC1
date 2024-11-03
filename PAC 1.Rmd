@@ -13,8 +13,6 @@ output:
 ```{r invisible, include=FALSE}
 #Carreguem el fitxer .csv
 dades<-read.csv("human_cachexia.csv")
-library(usethis)
-usethis::use_github()
 ```
 # Resum
 
