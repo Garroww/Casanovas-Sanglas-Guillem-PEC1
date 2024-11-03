@@ -1,0 +1,91 @@
+---
+title: "PAC 1"
+author: "Guillem Casanovas"
+date: "2024-11-03"
+output:
+  pdf_document:
+    toc: true
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r invisible, include=FALSE}
+#Carreguem el fitxer .csv
+dades<-read.csv("human_cachexia.csv")
+library(usethis)
+usethis::edit_git_config()
+
+```
+# Resum
+
+# Objectius
+
+# Materials i Metodes 
+
+
+# Resultats
+
+# Discussió
+
+# Apendix
+
+## Carregar les dades de treball
+```{r setup, eval=FALSE}
+#Carreguem el fitxer .csv
+dades<-read.csv("human_cachexia.csv",row.names = 1)
+```
+## Creació contenidor Summarized Experiment
+```{r setup2, eval=FALSE}
+#Carreguem la llibreria Summarized Experiment
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("SummarizedExperiment")
+library(SummarizedExperiment)
+
+
+#Anem creant cada un dels objectes que contindràn les metadades
+#En primer lloc ens fa falta transposar la taula de dades, ja que el contenidor 
+#SummareizedExperiment, representa les components en les files i les mostres en
+#les columnes, i el nostre fitxer de dades està al revés.
+dades_transposades<-t(as.matrix(dades))
+
+#Comencem per el colData que contindrà les condicions de cada mostra, 
+#en el nostre cas la condició del pacient, control o caquèxic i la seva ID
+colData<-data.frame(
+  #Guarda les IDs de cada pacient
+  col.names = colnames(dades_transposades),
+  #Guarda la condició de cada pacient, es passa a factor per tractar-ho com a 
+  #variable categòrica
+  condition= as.factor(dades_transposades["Muscle.loss",]),
+  stringsAsFactors = TRUE
+)
+
+#Es crea l'objecte rowData que contindrà les metadades de les components, en el nostre cas el nom de cada variable analitzada que són els metabolits.
+rowData<-data.frame(
+  #En primer lloc es pren els nomes de les variables
+  row.names = rownames(dades_transposades),
+  #Es guarda cada component com a "feature"
+  feature=rownames(dades_transposades),
+  stringsAsFactors = FALSE
+)
+
+#Es crea l'objecte assays que contindrà les dades d'expressió obtingudes
+assays<- list(counts=dades_transposades)
+
+#Finalment es crea l'objecte SummarizedExperiment (SE), amb cada un dels elements
+#que li pertoquen
+SE<-SummarizedExperiment(
+  assays=assays,
+  colData=colData,
+  rowData= rowData,
+  #Afegirem informació més general de les dades
+  metadata= list(
+    description= "Dades metabolòmiques de pacients amb i sense caquèxica",
+    dataType="Metabolomica",
+    measurementType="Intensitat"
+  )
+)
+
+```
