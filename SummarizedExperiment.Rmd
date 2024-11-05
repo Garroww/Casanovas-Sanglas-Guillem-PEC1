@@ -1,0 +1,90 @@
+---
+title: "Summarized Experiment"
+author: "Guillem Casanovas"
+date: "2024-11-04"
+output: html_document
+---
+
+# Summarized Experiment
+
+En aquest document hi ha el codi usat per a obtenir el contenidor Summarized Experiment. Es faran servir les dades escalades que hem generat en l'informe.
+
+
+```{r setup}
+
+#Carreguem el fitxer .csv
+dades<-read.csv("human_cachexia.csv", row.names = 1)
+
+#Separem les dades numeriques de la resta
+dades_numeriques<- dades[,2:ncol(dades)]
+
+#Escalarem les dades per tal que siguin més comparables i entendibles. Les 
+#escalarem en un rang de valors de 0 a 1.
+escala <- function(x) {
+    (x - min(x)) / (max(x) - min(x))
+}
+dades_numeriques_escalades <- apply(dades_numeriques, 2, escala)
+#Abans però guardem en un objecte nou la columna de la condició
+dades_no_numeriques <- dades[, 1, drop = FALSE]
+#Ara ho guardem en un nou objecte juntament amb la condició de cada pacient
+dades_escalades<- cbind(dades_no_numeriques, dades_numeriques_escalades)
+dades_escalades<-as.data.frame(dades_escalades)
+
+#Carreguem la llibreria Summarized Experiment
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+if (!requireNamespace("SummarizedExperiment", quietly = TRUE)) {
+    BiocManager::install("SummarizedExperiment")
+}
+library(SummarizedExperiment)
+
+
+#Anem creant cada un dels objectes que contindràn les metadades
+#En primer lloc ens fa falta transposar la taula de dades, ja que el contenidor 
+#SummareizedExperiment, representa les components en les files i les mostres en
+#les columnes, i el nostre fitxer de dades està al revés.
+dades_transposades<-t(as.matrix(dades_escalades))
+
+#Comencem per el colData que contindrà les condicions de cada mostra, 
+#en el nostre cas la condició del pacient, control o caquèxic i la seva ID
+colData<-data.frame(
+  #Guarda les IDs de cada pacient
+  col.names = colnames(dades_transposades),
+  #Guarda la condició de cada pacient, es passa a factor per tractar-ho com a 
+  #variable categòrica
+  condition= as.factor(dades_transposades["Muscle.loss",]),
+  stringsAsFactors = TRUE
+)
+
+#Es crea l'objecte rowData que contindrà les metadades de les components, en el 
+#nostre cas el nom de cada variable analitzada que són els metabolits.
+rowData<-data.frame(
+  #En primer lloc es pren els nomes de les variables
+  row.names = rownames(dades_transposades),
+  #Es guarda cada component com a "feature"
+  feature=rownames(dades_transposades),
+  stringsAsFactors = FALSE
+)
+
+#Es crea l'objecte assays que contindrà les dades d'expressió obtingudes
+assays<- list(counts=dades_transposades)
+
+#Finalment es crea l'objecte SummarizedExperiment (SE), amb cada un dels elements
+#que li pertoquen
+SE<-SummarizedExperiment(
+  assays=assays,
+  colData=colData,
+  rowData= rowData,
+  #Afegirem informació més general de les dades
+  metadata= list(
+    description= "Dades metabolòmiques d'orina de pacients amb càncer control i amb caquèxica",
+    dataType="Metabolomica",
+    measurementType="Concentració en unitats arbitraries (U.A)"
+  )
+)
+SE
+#Finalment guardem el contenidor Summarized Experiment en un fitxer RDA
+save(SE, file = "SummarizedExperiment.rda")
+```
+

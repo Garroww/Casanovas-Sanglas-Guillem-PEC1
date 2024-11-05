@@ -1,88 +1,823 @@
 ---
-title: "PAC 1"
-author: "Guillem Casanovas"
-date: "2024-11-03"
+title: "Informe PAC 1"
+author: "Guillem Casanovas Sanglas"
 output:
-  pdf_document:
+  pdf_document: 
+    number_sections: true
     toc: true
-  html_document:
-    toc: true
-    toc_float: true
+    toc_depth: 2
+  html_document: default
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
-```{r invisible, include=FALSE}
-#Carreguem el fitxer .csv
-dades<-read.csv("human_cachexia.csv")
-```
 # Resum
+
+S'explora la caquèxia, un estat de desnutrició i atrofia muscular
+relacionat amb el càncer, mitjançant l'anàlisi de dades de 77 pacients
+amb càncer, que inclou pacients amb caquèxia i pacients controls. S'han
+analitzat les concentracions de diferents metabòlits a partir de mostres
+d'orina utilitzant RStudio. Els resultats indiquen que hi ha determinats
+metabòlits, com la Leucina i la Creatinina, que presenten diferències
+significatives en la seva concentració entre ambdós grups. La
+identificació d'aquests elements pot ser clau per a la creació d'un
+panell de biomarcadors que permetin diagnosticar pacients caquèxics.
 
 # Objectius
 
-# Materials i Metodes 
+La caquèxia es un estat d'extrema desnturició, atròfia muscular i
+anorèxia que pateix una persona la qual no esta tractant de perdre pes.
+El més normal es perdre massa muscular i en alguns casos es perd teixit
+adipòs, però no sempre. Pot estar relacionada amb altres patologies,
+essent un símptoma de moltes patologies com per exemple càncer. Però
+també pot tenir relació amb altres patologies com tuberculosi, sida i
+malalties autoimmunes. Apareix en el 70% de pacients amb cancer, essent
+el responsable del 22% de les morts de pacients amb càncer
+\hyperlink{ref1}{[1]}. Els pacients que la pateixen presenten feblesa
+física que pot arribar a portar a un estat d'immobilitat degut a la
+important perdua muscular. És molt díficil diagnosticar-la ja que no hi
+ha un criteri ben definit, sobretot en els estadis inicials on es podria
+prevenir \hyperlink{ref2}{[2]}.
 
+L'objectiu d'aquest informe es el de realitzar una exploració de les
+dades de 77 pacients amb càncer, alguns dels quals pateixen caquèxia i
+altres no. D'aquesta manera amb la exploració de les dades que tenim, es
+pretè intentar trobar diferencies en els valors dels metàbolits
+analitzats que permetin diferenciar entre la població que pateix
+caquèxia i la que no. El qual podria ser útil en futurs estudis de
+pacients amb condicions similars per a poder intentar establir
+biomarcadors que permetin diagnosticar la patologia.
+
+# Materials i Metodes
+
+Pel que fa a les dades usades en l'informe, no són dades originals, sinò
+que son proporcionades pel tutor de l'assignatura. Les quals s'obtenen
+de la web
+[[MetaboAnalyst]{.underline}](https://rest.xialab.ca/api/download/metaboanalyst/human_cachexia.csv)
+i contenen informació metabolòmica de mostres d'oringa de pacients amb
+càncer, tant controls com pacients caquèxics. En particular s'analitza
+la concentració d'orina d'una gran mostra de metabòlits.
+
+Per a l'analisis i tractament de les dades s'ha usat exclusivament el
+software *Rstudio* amb el qual s'ha generat tant l'informe com el fitxer
+que conté el contenidor *SummarizedExperiment*. Al treballar les dades
+s'ha treballat amb el llenguatge de programació R. Gran part de els
+analisis s'han realitzat fent servir funcions propies de la versio base
+del software. A més a més però també s'ha fet servir els paquets
+*BiocManager*, *SummarizedExperiment* i *ggfortify*, que proporcionen
+funcions específiques per a la manipulació i visualització de les dades.
+
+El procés seguit per l'analisis ha sigut el que es descriu a
+continuació. En primer lloc s'estudien les dades per observar si es
+necessita cap manipulació previa a poder treballar-hi. Seguidament es
+crea el contenidor *SummarizedExpermient*, el qual conté tota la
+informació relativa a les dades de l'experiement, aixi com també les
+metadades associades. Posteriorment es procedeix al analisis exploratori
+de les dades, ja que es un dels objectius del informe. On es miren les
+característiques a nivell general, per finalment entrar en analisis més
+detallats buscant patrons o agrupaments intrínsecs en les dades, que
+permetin trobar diferències significatives i rellevants entre els grups
+de pacients.
 
 # Resultats
 
+```{r invisible, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+#Carreguem el contenidor per a poder-hi treballar
+library(SummarizedExperiment)
+load(file = "SummarizedExperiment.rda")
+# Guardem en un objecte les dades numeriques de l'experiment,ja que ens serà util a posteriori
+dades_expressio<-apply(assay(SE)[-1,],2,as.numeric)
+
+#Carreguem el fitxer .csv
+dades<-read.csv("human_cachexia.csv",row.names = 1)
+#Ho passem a factor per facilitar l'analisis
+dades$Muscle.loss<-as.factor(dades$Muscle.loss)
+
+```
+
+## Observació general dades
+
+En primer lloc es realitza una observació general del contingut del
+contenidor SE. Per veure quines dades estem tractant.
+
+```{r setup37,echo=FALSE}
+#Seleccionem els components principals del objecte SE per fer-nos una idea del contingut d'aquest.
+head(SE)
+rowData(SE)
+colData(SE)
+metadata(SE)
+```
+
+Veiem com estem tractant amb un conjunt de dades que conté observacions
+de pacients amb cànceramb caquèxia i pacients controls. Cada pacient té
+un identificador únic. Per a cada pacient s'han pres mostres d'orina i
+s'ha analitzat la concentració de diferents metabòlits en unitats
+arbitraries (U.A).
+
+Seguim amb l'ànalisis del conjunt de dades.
+
+S'evaluen les dimensions de les dades d'estudi, per veure l'extensió de
+les dades que es tracten.
+
+```{r setup3,echo=FALSE}
+
+cat("Les dimensions de la base de dades són", dim(assay(SE))[1],"files i",
+    dim(assay(SE))[2], "columnes. Les 64 files corresponen a 63 
+metabolits analitzats i la condició del malalt (caquèxic o control),i les 77 columnes 
+es el nombre de pacients del estudi.\n")
+
+```
+
+## Proporció de pacients en l'estudi
+
+A continuació visualitzarem quants dels pacients que tenim corresponen a
+pacients control (pacients amb càncer) i quants d'ells pateixen
+caquèxia. Es rellevant determinar-ho ja que si tenim massa pocs pacients
+de qualsevol dels dos grups ens pot ser perjudicial. Una baixa mostra de
+qualsevol dels dos grups faria que els valors obtinguts poguessin no ser
+representatius del grup al qual pertanyen, fent que els resultats ens
+portessin a interpertacions erronies.
+
+```{r setup15, echo=FALSE}
+#En primer lloc calculem el nombre de pacients segons la condició
+Numero_pacients<-table(colData(SE)$condition)
+#Fem el mateix en proporció
+Percentatge_pacients<-prop.table(Numero_pacients)
+#Preparem les columnes i files de la taula que farem
+Columna_taula<-c("Recompte pacients", "Proporció pacients")
+Fila_taula<-c("Caquèxia", "Control")
+#Creem la taula amb les dades, ajustant-les segons la seva naturalesa
+Taula_recompte<-data.frame(Numero=as.integer(Numero_pacients), 
+                           Percentatge= round(as.numeric(Percentatge_pacients),2))
+#Afegim els noms de les files i les columnes
+colnames(Taula_recompte)<-Columna_taula
+rownames(Taula_recompte)<-Fila_taula
+print(Taula_recompte)
+
+```
+
+*Recompte de pacients amb caquèxia i pacients control en l'estudi.*
+
+Tal i com podem veure hi ha un major nombre de pacients amb caquèxia,
+concretament hi ha 17 pacients més. En proporció tenim un 60% de la
+mostra que correspon a pacients amb caquèxia i el 40% restant són
+pacients control. Pel que podem considerar que tenim una mostra bastant
+similar de cada un dels grups.
+
+Com que ambdós grups es troben bastan ben representats podem procedir
+amb l'exploració de les dades.
+
+## Valors omessos
+
+Un altre analisis interessant es buscar si hi ha cap valor omès al llarg
+del conjunt de dades. Ja que si no els idenitifiquem, podrien ser
+considerats pel software d'analisis com a 0, fet que podria alterar
+significativament els valors obtinguts en les variables afectades.
+
+```{r setup31, echo=FALSE}
+#Farem un sumatori del nombre de valors omesos (NA), en cas que en trobem 
+#procedirem a identificar-los.
+cat("El nombre de valors omessos es",sum(is.na.data.frame(dades_expressio)),
+    "\n")
+```
+
+Per sort tenim un conjunt de dades que no conté valors omessos per tant
+podem procedir amb l'exploració sense necessitat de tractar les dades.
+
+## Analisis de possibles patrons
+
+Farem un estudi de components principals (PCA), per a tal d'observar si
+hi ha cap patró que ens permeti estudiar la major part de la
+variabilitat del conjunt de dades.
+
+```{r setup8, echo=FALSE}
+#Ara podem fer el PCA, abans pero cal transposar les dades ja que el PCA vol
+#les variables en columnes i observacions en files
+PCA<-prcomp(t(dades_expressio))
+#Representarem nomes una part de les dades del resum,ja que sino es massa llarg
+resum_pca<-summary(PCA)
+#Seleccionem nomes les 10 primeres components
+resum_pca$importance[,1:10]
+```
+
+*Mostra del resum obtingut del PCA on es veu la contribució de cada
+component principal (PC).*
+
+Veient el resum del PCA podem observar com hi ha una component molt
+rellevant, ja que per si sola explica el 44% de la variancia total de
+les dades. Si agafem fins la PC7 arribariem a explicar el 72% de la
+variancia, pel que podriem reduir les dimensions del model dràsticament
+i relativament mantenir gran part de la informació.
+
+Es fa un gràfic amb les dues components principals per observar com
+separen les mostres segons la condició del pacient.
+
+```{r setup9, echo=FALSE}
+#Carreguem el paquet ggfortify que fa gràfics de PCA d'una manera molt #simple i efectiva
+library(ggfortify)
+#Fem el gràfic representant les dades de les dues principals components i #que es diferencin cada condició per un color diferent.
+autoplot(PCA, data=colData(SE), colour = 'condition',
+         main="Gràfic de les dues components principals")
+```
+
+*Gràfic que representa com es separen les dades segons si són pacients
+caquèxics o control gràcies a la variancia explicada per les dues
+components principals.*
+
+En el gràfic, tot i que veiem que hi ha moltes mostres barrejades,
+s'observa una certa tendencia a que les mostres de pacients caquèxics es
+desplaçen cap a valors positius de la PC1. Fet que encaixa amb el fet
+que aquesta variable explica practicament la meitat de la variancia del
+conjunt de dades. Tot i això nomes estem representant el 50% de la
+variancia, per això hi ha moltes mostres que no es troben del tot
+separades, fent que la separació encara no sigui optima.
+
+## Evaluació de possibles agrupaments
+
+Realitzarem un dendograma per a veure si podem observar cap cluster o
+patró que ens permeti identificar alguna relació entre determinades
+mostres que ens permetin diferenciar clarament entre els dos grups
+estudiats.
+
+```{r setup10, echo=FALSE}
+
+# Calculem la matriu de distancies amb la distancia euclidea
+distancies <- dist(t(dades_expressio), method = "euclidean")
+
+#Creem l'objecte que crea l'arbre de distancies
+cluster <- hclust(distancies, method = "average")
+#I el representem que ens ensenyi cada observació a quina condició pertany
+plot(cluster, labels=colData(SE)$condition)
+
+```
+
+*Representació del dendograma on veiem cada observació segons la
+condició del pacient.*
+
+Veient el dendograma veiem com en molts punts tenim tant observacions de
+pacients amb caquèxia com pacients control, fet que no ens permet
+observar cap patró clar. Per desgràcia el dendograma no ens es de massa
+ajuda per a poder observar si es forma cap cluster amb les dades, pel
+que no podem extreure'n cap relació.
+
+## Comparació concentracions de metabolits segons la condició del pacient
+
+Veient el conjunt de dades que tenim, sembla interessant mirar si entre
+els dos grups hi ha cap variable que presenti uns valors d'expressió
+relativament diferencials entre ells. De manera que ens pogués ser
+d'ajuda per poder usar aquelles variables com a possibles biomarcadors
+pel diagnostic de la caquèxia. Ara passarem a mirar els valors de cada
+variable segons la condició del pacient. Es fa l'analisis amb les dades
+escalades per facilitar la comprensió. Tal i com podem veure en
+l'Apèndix en la secció del [**Gràfic de caixes segons cada
+condició**](#gràfic-de-caixes-de-cada-metàbolit-segons-la-condició-del-pacient)**,**
+hi ha algunes variables que si semblen presentar diferencies entre cada
+condició. A continuació es seleccionen alguns dels gràfics més
+representatius.
+
+```{r setup7, echo=FALSE,fig.width=10, fig.height=8}
+#Representem els gràfics de varies varaibles rellevants
+#Seleccionem quants gràfics volem represnetar per pagina i fila
+par(mfrow = c(2, 2))
+#Fem el  grafic de caixes, on es representi els valors de concentració de 
+#la Leucina segons la condició del pacient
+boxplot(as.numeric(assay(SE, "counts")["Leucine", ]) ~ colData(SE)$condition, 
+        #Afegim elements
+        main = "Leucine", 
+        xlab = "Condició del pacient",
+        ylab = "Leucine" , 
+        col = c("red", "blue"))
+boxplot(as.numeric(assay(SE, "counts")["X4.Hydroxyphenylacetate", ]) ~ colData(SE)$condition, 
+        main = "X4.Hydroxyphenylacetate", 
+        xlab = "Condició del pacient",
+        ylab = "X4.Hydroxyphenylacetate" , 
+        col = c("red", "blue"))
+boxplot(as.numeric(assay(SE, "counts")["Creatinine", ]) ~ colData(SE)$condition, 
+        main = "Creatinine", 
+        xlab = "Condició del pacient",
+        ylab = "Creatinine" , 
+        col = c("red", "blue"))
+boxplot(as.numeric(assay(SE, "counts")["Uracil", ]) ~ colData(SE)$condition, 
+        main = "Uracil", 
+        xlab = "Condició del pacient",
+        ylab = "Uracil" , 
+        col = c("red", "blue"))
+
+```
+
+*Comparació dels nivells de Leucina, Hydroxypenylacetat, Creatinina i
+Uracil en pacients amb i sense caquèxia.*
+
+Hem seleccionat 4 gràfics que mostren diferents situacions. En el cas de
+Leucina i Creatinina, s'observa una gran diferencia en els valors de
+concentració dels metabolits en pacients caquexics i control, essent
+superior en els pacients caquexics en ambdós cassos. Pel que fa a
+Hydroxypenylacetat, la diferencia no es tant important, pel que no podem
+afirmar que hi ha diferencies clares entre els dos grups. I finalment
+pel que fa a Uracil, veiem com els valors són similars.
+
+Es seleccionen aquests gràfics per criteris educatius, seleccionant dues
+variables que presentin grans diferencies a nivell visual, una altra que
+la diferencia sigui menor, pero tot i això apreciable, i una que
+aparentment no hi ha diferencies. Aixi a posteriori, podem comparar les
+mitjanes i fer un estudi estadístic amb dos cassos diferents.
+
+Es calcula la mitjana sense escalar de la concentració dels metabòlits
+destacats, per veure fins a quin punt hi ha tanta diferencia.
+
+```{r setup812, echo=FALSE}
+#Calculem la mitjana de cada variable segons la condicio
+mitjana_leucina_control<-mean(dades$Leucine[dades$Muscle.loss=="control"])
+mitjana_leucina_caquexia<-mean(dades$Leucine[dades$Muscle.loss!="control"])
+mitjana_X4_control<-mean(dades$X4.Hydroxyphenylacetate
+                              [dades$Muscle.loss=="control"])
+mitjana_X4_caquexia<-mean(dades$X4.Hydroxyphenylacetate
+                               [dades$Muscle.loss!="control"])
+mitjana_creatinina_control<-mean(dades$Creatinine[dades$Muscle.loss=="control"])
+mitjana_creatinina_caquexia<-mean(dades$Creatinine[dades$Muscle.loss!="control"])
+mitjana_Uracil_control<-mean(dades$Uracil
+                              [dades$Muscle.loss=="control"])
+mitjana_Uracil_caquexia<-mean(dades$Uracil
+                               [dades$Muscle.loss!="control"])
+
+cat("La concentració mitjana de Leucina en els pacients controls es de",mitjana_leucina_control,"U.A. 
+I en els pacients caquexics és", mitjana_leucina_caquexia,"U.A.\n")
+
+cat("La concentració mitjana de Hydroxypenylacetat en els pacients controls es de",mitjana_X4_control,"U.A. 
+I en els pacients caquexics és", mitjana_X4_caquexia,"U.A.\n")
+
+cat("La concentració mitjana de Creatinina en els pacients controls es de",mitjana_creatinina_control,"U.A. 
+I en els pacients caquexics és", mitjana_creatinina_caquexia,"U.A.\n")
+
+cat("La concentració mitjana d'Uracil en els pacients controls es de",mitjana_Uracil_control,"U.A. 
+I en els pacients caquexics és", mitjana_Uracil_caquexia,"U.A.\n")
+
+```
+
+Veiem com en el cas de la Leucina i la Creatinina les diferencies són
+importants, en canvi en Hydroxypenylacetat i Uracil les diferencies són
+menors.
+
+Mirem-ho en percentatge per tenir una idea més clara de les diferencies
+entre elles.
+
+```{r setup82, echo=FALSE}
+#Calculem el % de diferencia entre una mitjana i l'altre i ho arrodonim.
+leucina_prop<-round(((mitjana_leucina_caquexia-mitjana_leucina_control)/
+                  mitjana_leucina_control)*100,2)
+X4_prop <- round(((mitjana_X4_caquexia - mitjana_X4_control) / 
+                    mitjana_X4_control) * 100, 2)
+creatinina_prop<-round(((mitjana_creatinina_caquexia-mitjana_creatinina_control)                   /mitjana_creatinina_control)*100,2)
+Uracil_prop <- round(((mitjana_Uracil_caquexia - mitjana_Uracil_control) / 
+                    mitjana_Uracil_control) * 100, 2)
+cat("La concentració de Leucina es un", leucina_prop, "% superior en pacients amb caquèxia 
+en comparació al control.\n")
+cat("La concentració de Hydroxypenylacetat es un", X4_prop, "% superior en
+pacients amb  caquèxia en comparació al control.\n")
+cat("La concentració de Creatinina es un", creatinina_prop, "% superior en pacients amb caquèxia 
+en comparació al control.\n")
+cat("La concentració d'Uracil es un", Uracil_prop, "% superior en pacients amb  caquèxia
+en comparació al control.\n")
+```
+
+Veiem com la concentració de Leucina i Creatinina en pacients amb
+caquèxia es molt més gran que la que presenten els pacients control en
+orina. Essent el doble pel que fa a la Leucina i gairebè el doble en
+Creatinina. Pel que fa a Hydroxypenyalcetat i Uracil la diferencia es
+menor, en els dos casos la diferencia es menor al 20%.
+
+Aquesta valoració s'ha de prendre amb pinces ja que no disposem de dades
+estadístiques que ho recolzin. Pel que es realitza un breu estudi
+estadístic per donar més pes al que hem vist.
+
+Es realitza un analisis ANOVA que ens permet comparar si els nivells de
+concentració dels dos metàbolits estudiats són significativament
+diferents segons la condició.
+
+```{r setup83, echo=FALSE}
+#Realitzem el model anova amb les variables, de nou amb les dades no escalades.
+model_leu<-aov(Leucine~Muscle.loss, data=dades)
+resum_model_leu<-summary(model_leu)
+#Mirem el resum per avaluar el resultat
+p_value_leu<-resum_model_leu[[1]]["Muscle.loss", "Pr(>F)"]
+p_value_leu<-round(p_value_leu,4)
+
+model_X4<-aov(X4.Hydroxyphenylacetate~Muscle.loss, data=dades)
+resum_model_X4<-summary(model_X4)
+#Mirem el resum per avaluar el resultat
+p_value_X4<-resum_model_X4[[1]]["Muscle.loss", "Pr(>F)"]
+p_value_X4<-round(p_value_X4,4)
+model_uracil<-aov(Uracil~Muscle.loss, data=dades)
+resum_model_uracil<-summary(model_uracil)
+#Mirem el resum per avaluar el resultat
+p_value_uracil<-resum_model_uracil[[1]]["Muscle.loss", "Pr(>F)"]
+p_value_uracil<-round(p_value_uracil,4)
+
+model_Creatinina<-aov(Creatinine~Muscle.loss, data=dades)
+resum_model_Creatinina<-summary(model_Creatinina)
+#Mirem el resum per avaluar el resultat
+p_value_Creatinina<-resum_model_Creatinina[[1]]["Muscle.loss", "Pr(>F)"]
+p_value_Creatinina<-round(p_value_Creatinina,4)
+
+cat("El p_value obtingut per la Leucina es", p_value_leu,".\n")
+cat("El p_value obtingut per la Hydroxypenyalcetat es", p_value_X4,".\n")
+cat("El p_value obtingut per la Creatinina es", p_value_Creatinina,".\n")
+cat("El p_value obtingut per la Uracil es", p_value_uracil,".\n")
+```
+
+Com podem veure el breu estudi que hem fet ens permet observar com entre
+les dues condicions si que hi ha diferencies significatives pel que fa a
+la concentració de Leucina i Creatinina, ja que ambdós p-values son
+signifiactivament menors a 0.05, pel que considerem que la diferencia de
+mitjanes es estadísitcament significant al 0.05 de significancia. En
+canvi pel que fa a Hydroxypenyalcetat i Uracil, no hi ha prou evidencia
+per a poder acceptar aquesta hipotesis. Per tant no podem considerar que
+les diferencies vistes siguin estadísticament significatives.
+
 # Discussió
+
+Tal i com hem vist al llarg del informe hem pogut realitzar una
+exploració de les dades. Aquest anàlisis ens ha permés identificar dos
+punts rellevants.
+
+Gràcies al [[Analisis de possibles
+patrons]{.underline}](analisis-de-possibles-patrons) hem pogut observar
+com tot i que el model conté moltes variables i per tant moltes
+components principals, gairebe la meitat de la variancia de les dades
+s'explica per una sola component principals. Tot i això la resta de
+components aporten molt poc en comparació, ja que només hi ha 4
+components principals més que expliquin més del 5% de variancia, fet que
+fa que necessitem moltes components principals per a poder representar
+un valor de variancia raonable. Per poder explicar el 80% de la
+variancia necessitem fins a la PC10, i fins a la PC18 no expliquem el
+90% de la variancia. Encara que la seva aportació pugui ser infíma,
+poden contenir informació vital, pel que no s'han de menysprear. Això
+ens porta a que si seleccionem només les dues primeres components
+principals, el model que tenim no permeti realitzar una separació massa
+bona de les dades segons la condició de cada mostra, pel que si es
+pretengués fer una reducció de la dimensionalitat de les dades s'hauria
+d'anar amb cautela, ja que una reducció massa grossa ens faria perdre
+informació rellevant.
+
+Amb els resultats de [[Comparació concentracions de metabolits segons la
+condició del
+pacient]{.underline}](comparació-concentracions-de-metabolits-segons-la-condició-del-pacient),
+hem pogut identificar dos metabòlits que semblen presentar
+concentracions estadísticament diferents en pacients caquèxics i
+control. COncretament hem vist com la Leucina i Creatinina, presenten
+valors superiors en pacient caquèxics en comparació al control. Això ho
+hem verificat per un test estadístic. Aquest fet es rellevant, ja que
+aquesta troballa podria significar que aquests dos metàbolits
+possiblement podrien formar part d'un panell de biomarcadors útils per a
+identificar pacients amb caquèxia. Això també va ser observat per
+\hyperlink{ref3}{[3]} i \hyperlink{ref4}{[4]} que en ambdós estudis es
+va trobar que aquests metàbolits presentaven perfils de concentració en
+orina diferents segons si el pacient era caquèxic o control. Suggerint
+que poden ajudar a crear models de diganostic per la caquèxia.
+
+Es important remarcar que la mida del estudi potser no es suficientment
+gran, ja que en el nostre cas i inclós en \hyperlink{ref3}{[3]} i
+\hyperlink{ref4}{[4]}, cap estudi supera les 100 mostres. Pel que cal
+prendre les afirmacions que s'han fet amb cura, ja que possiblement
+necessitem un major volum de mostra per a poder establir biomarcadors
+útils que siguin estadísticament rellevants. Però tot i això, la
+troballa d'aquests marcadors diferencials en diferents estudis pot ser
+indicador que cal seguir analitzant perfils metabolomics en pacients
+caquèxics, que ens permetin augmentar el volum de mostres i poguem
+reafirmar aquestes observacions.
+
+# Bibliografia
+
+\hypertarget{ref1}{}
+
+[1] Setiawan, T., Sari, I. N., Wijaya, Y. T., Julianto, N. M., Muhammad,
+J. A., Lee, H., Chae, J. H., & Kwon, H. Y. (2023). Cancer cachexia:
+molecular mechanisms and treatment strategies. Journal of hematology &
+oncology, 16(1), 54.
+[[https://doi.org/10.1186/s13045-023-01454-0]{.underline}](https://doi.org/10.1186/s13045-023-01454-0){.uri}
+
+\hypertarget{ref2}{}
+
+[2] Peixoto da Silva, S., Santos, J. M. O., Costa E Silva, M. P., Gil da
+Costa, R. M., & Medeiros, R. (2020). Cancer cachexia and its
+pathophysiology: links with sarcopenia, anorexia and asthenia. Journal
+of cachexia, sarcopenia and muscle, 11(3), 619–635.
+[[https://doi.org/10.1002/jcsm.12528]{.underline}](https://doi.org/10.1002/jcsm.12528){.uri}
+
+\hypertarget{ref3}{}
+
+[3]Yang, Q. J., Zhao, J. R., Hao, J., Li, B., Huo, Y., Han, Y. L., Wan,
+L. L., Li, J., Huang, J., Lu, J., Yang, G. J., & Guo, C. (2018). Serum
+and urine metabolomics study reveals a distinct diagnostic model for
+cancer cachexia. Journal of cachexia, sarcopenia and muscle, 9(1),
+71–85.
+[[https://doi.org/10.1002/jcsm.12246]{.underline}](https://doi.org/10.1002/jcsm.12246){.uri}
+
+\hypertarget{ref4}{}
+
+[4]Eisner, R., Stretch, C., Eastman, T.B., Xia, J., Hau, D.D., Damaraju,
+S., Greiner, R., Wishart, D.S., & Baracos, V.E. (2011). Learning to
+predict cancer-associated skeletal muscle wasting from 1H-NMR profiles
+of urinary metabolites. Metabolomics, 7, 25-34.
+[[doi:10.1007/s11306-010-0232-9]{.underline}](doi:10.1007/s11306-010-0232-9){.uri}
+
+# Repositori GitHub
+
+Link al repositori de GitHub:
+[[https://github.com/Garroww/Casanovas-Sanglas-Guillem-PEC1.git]{.underline}](https://github.com/Garroww/Casanovas-Sanglas-Guillem-PEC1.git){.uri}
 
 # Apendix
 
+A continuació s'inclouen tots aquells codis que s'han anat executant al
+llarg del informe però que no han aparegut. Així com també versions
+completes de resultats que s'han mostrat parcialment. També s'inclou
+altres fragments de codi usats que han sigut utils. Els fragments de
+codi que són identics als que s'han usat en l'apartat de
+[[Resultats]{.underline}](resultats) es mostren sense executar per
+estalviar espai. Cada fragment de codi incloul'explicació dels passos
+rellevants, així com també algun comentari no rellevant que no s'ha
+afegit en l'informe.
+
 ## Carregar les dades de treball
-```{r setup, eval=FALSE}
+
+```{r setup}
 #Carreguem el fitxer .csv
 dades<-read.csv("human_cachexia.csv",row.names = 1)
+
 ```
+
+## Comprovació rang de valors de les variables
+
+Observem com efectivament hi ha molta diferencia en el rang en
+determinades variables, tot i que en general la inmensa majoria de
+variables prenen valors similars. Pel que necessitarem escalar les
+dades, per fer-ho mes entendible i interpretable.
+
+```{r setup5}
+#Separem les dades numeriques de la resta
+dades_numeriques<- dades[,2:ncol(dades)]
+#FEm un grafic de caixes per veure els valors que pren cada variable, aixi podem
+#observar si tenim cap variable que té un rang de valors molt diferent al de la resta de dades.
+boxplot(dades_numeriques, xlab="Variables", ylab="Expressió (U.A)")
+```
+
+## Escalatge de dades {#escalatge-de-dades}
+
+Vist que el rang de algunes variables es molt variat, l'escalarem per a
+poder treballar més comodament. Aquest pas es realitza previament a la
+creació del contenidor SummarizedExperiment.
+
+```{r setup6}
+#Escalarem les dades per tal que siguin més comparables i entendibles. Les 
+#escalarem en un rang de valors de 0 a 1.
+escala <- function(x) {
+    (x - min(x)) / (max(x) - min(x))
+}
+dades_numeriques_escalades <- apply(dades_numeriques, 2, escala)
+#Abans però guardem en un objecte nou la columna de la condició
+dades_no_numeriques <- dades[, 1, drop = FALSE]
+#Ara ho guardem en un nou objecte juntament amb la condició de cada pacient
+dades_escalades<- cbind(dades_no_numeriques, dades_numeriques_escalades)
+dades_escalades<-as.data.frame(dades_escalades)
+
+#Repetim de nou el boxplot per verificar
+boxplot(dades_numeriques_escalades,xlab="Variables", ylab="Expressió (U.A)")
+
+```
+
 ## Creació contenidor Summarized Experiment
+
+Es troba en el document específic "Summarized Experiment.rmd". El
+contenidor creat ja conté les dades escalades, que s'han obtingut en
+l'apartat [Escalatge de dades](#escalatge-de-dades)
+
 ```{r setup2, eval=FALSE}
-#Carreguem la llibreria Summarized Experiment
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
+#Carreguem el contenidor per a poder-hi treballar
+load(file = "SummarizedExperiment.rda")
 
-BiocManager::install("SummarizedExperiment")
-library(SummarizedExperiment)
+```
 
+## Observació general dades
 
-#Anem creant cada un dels objectes que contindràn les metadades
-#En primer lloc ens fa falta transposar la taula de dades, ja que el contenidor 
-#SummareizedExperiment, representa les components en les files i les mostres en
-#les columnes, i el nostre fitxer de dades està al revés.
-dades_transposades<-t(as.matrix(dades))
+En primer lloc es realitza una observació general del contingut del
+contenidor SE. Per veure quines dades estem tractant
 
-#Comencem per el colData que contindrà les condicions de cada mostra, 
-#en el nostre cas la condició del pacient, control o caquèxic i la seva ID
-colData<-data.frame(
-  #Guarda les IDs de cada pacient
-  col.names = colnames(dades_transposades),
-  #Guarda la condició de cada pacient, es passa a factor per tractar-ho com a 
-  #variable categòrica
-  condition= as.factor(dades_transposades["Muscle.loss",]),
-  stringsAsFactors = TRUE
-)
+```{r setup371,eval=FALSE}
+#Seleccionem els components principals del objecte SE per fer-nos una idea del contingut d'aquest.
+head(SE)
+rowData(SE)
+colData(SE)
+metadata(SE)
+```
 
-#Es crea l'objecte rowData que contindrà les metadades de les components, en el nostre cas el nom de cada variable analitzada que són els metabolits.
-rowData<-data.frame(
-  #En primer lloc es pren els nomes de les variables
-  row.names = rownames(dades_transposades),
-  #Es guarda cada component com a "feature"
-  feature=rownames(dades_transposades),
-  stringsAsFactors = FALSE
-)
+```{r setup345,eval=FALSE}
 
-#Es crea l'objecte assays que contindrà les dades d'expressió obtingudes
-assays<- list(counts=dades_transposades)
+cat("Les dimensions de la base de dades són", dim(assay(SE))[1],"files i",
+    dim(assay(SE))[2], "columnes. Les 64 files corresponen a 63 
+    metabolits analitzats i la condició del malalt (caquèxic o control), 
+    i les 77 columnes es el nombre de pacients del estudi.\n")
 
-#Finalment es crea l'objecte SummarizedExperiment (SE), amb cada un dels elements
-#que li pertoquen
-SE<-SummarizedExperiment(
-  assays=assays,
-  colData=colData,
-  rowData= rowData,
-  #Afegirem informació més general de les dades
-  metadata= list(
-    description= "Dades metabolòmiques de pacients amb i sense caquèxica",
-    dataType="Metabolomica",
-    measurementType="Intensitat"
-  )
-)
+```
 
+## Proporció de pacients en l'estudi
+
+```{r setup151, eval=FALSE}
+#En primer lloc calculem el nombre de pacients segons la condició
+Numero_pacients<-table(colData(SE)$condition)
+#Fem el mateix en proporció
+Percentatge_pacients<-prop.table(Numero_pacients)
+#Preparem les columnes i files de la taula que farem
+Columna_taula<-c("Recompte pacients", "Proporció pacients")
+Fila_taula<-c("Caquèxia", "Control")
+#Creem la taula amb les dades, ajustant-les segons la seva naturalesa
+Taula_recompte<-data.frame(Numero=as.integer(Numero_pacients), 
+                           Percentatge= round(as.numeric(Percentatge_pacients),2))
+#Afegim els noms de les files i les columnes
+colnames(Taula_recompte)<-Columna_taula
+rownames(Taula_recompte)<-Fila_taula
+print(Taula_recompte)
+
+```
+
+## Valors omessos
+
+```{r setup319, eval=FALSE}
+#Farem un sumatori del nombre de valors omesos (NA), en cas que en trobem 
+#procedirem a identificar-los.
+cat("El nombre de valors omessos es",sum(is.na.data.frame(dades_expressio)),
+    "\n")
+```
+
+## Analisis de components principals (PCA)
+
+```{r setup89}
+#Ara podem fer el PCA, abans pero cal transposar les dades ja que el PCA vol
+#les variables en columnes i observacions en files
+PCA<-prcomp(t(dades_expressio))
+#Representarem nomes una part de les dades del resum,ja que sino es massa llarg
+resum_pca<-summary(PCA)
+#Mirem les components
+resum_pca
+#Seleccionem nomes les 10 primeres components
+resum_pca$importance[,1:10]
+```
+
+```{r setup91, eval=FALSE}
+#Carreguem el paquet ggfortify que fa gràfics de PCA d'una manera molt #simple i efectiva
+library(ggfortify)
+#Fem el gràfic representant les dades de les dues principals components i #que es diferencin cada condició per un color diferent.
+autoplot(PCA, data=colData(SE), colour = 'condition',
+         main="Gràfic de les dues components principals")
+```
+
+## Dendograma
+
+Crearem un dendograma per a veure com es distribuixen les diferents
+mostres segons la condició del pacient.
+
+```{r setup25, eval=FALSE}
+# Calculem la matriu de distancies
+distancies <- dist(t(dades_expressio), method = "euclidean")
+
+#Creem l'objecte que crea l'arbre de distancies
+cluster <- hclust(distancies, method = "average")
+plot(cluster, labels=colData(SE)$condition)
+```
+
+## Gràfic de caixes de cada metàbolit segons la condició del pacient {#gràfic-de-caixes-de-cada-metàbolit-segons-la-condició-del-pacient}
+
+```{r setup4,fig.width=10, fig.height=8}
+#En primer lloc es guarden els noms de cada fila
+noms<-names(SE)
+
+#Eliminem la fila de la condició, ja que no volem fer-ne un gràfic per ella,
+#ja que cada gràfic contindrà aquesta variable
+noms<-noms[noms!="Muscle.loss"]
+
+#Creem un gràfic de caixa, on compararem els valors que pren cada variable 
+#segons la condició dels pacients
+par(mfrow=c(2,2))
+for (i in seq_along(noms)) {
+  #Per a fer-ho necessitem que les dades es tractin com a números, ja que sino dona errors. I que es vagi iterant per cada variable
+  dades_numeriques_2 <- as.numeric(assay(SE, "counts")[noms[i], ])
+  #Fem el grafic comparant els valors de cada variable  segons la condicio
+  boxplot(dades_numeriques_2 ~ colData(SE)$condition, 
+          main = noms[i], 
+          xlab = "Condició del pacient",
+          ylab = noms[i], 
+          col = c("red", "blue"))
+}
+
+```
+
+```{r setup79, eval=FALSE}
+#Representem els gràfics de varies varaibles rellevants
+#Seleccionem quants gràfics volem represnetar per pagina i fila
+par(mfrow = c(2, 2))
+#Fem el  grafic de caixes, on es representi els valors de concentració de 
+#la Leucina segons la condició del pacient
+boxplot(as.numeric(assay(SE, "counts")["Leucine", ]) ~ colData(SE)$condition, 
+        #Afegim elements
+        main = "Leucine", 
+        xlab = "Condició del pacient",
+        ylab = "Leucine" , 
+        col = c("red", "blue"))
+boxplot(as.numeric(assay(SE, "counts")["X4.Hydroxyphenylacetate", ]) ~ colData(SE)$condition, 
+        main = "X4.Hydroxyphenylacetate", 
+        xlab = "Condició del pacient",
+        ylab = "X4.Hydroxyphenylacetate" , 
+        col = c("red", "blue"))
+boxplot(as.numeric(assay(SE, "counts")["Creatinine", ]) ~ colData(SE)$condition, 
+        main = "Creatinine", 
+        xlab = "Condició del pacient",
+        ylab = "Creatinine" , 
+        col = c("red", "blue"))
+boxplot(as.numeric(assay(SE, "counts")["Uracil", ]) ~ colData(SE)$condition, 
+        main = "Uracil", 
+        xlab = "Condició del pacient",
+        ylab = "Uracil" , 
+        col = c("red", "blue"))
+
+```
+
+## Càlcul mitjanes
+
+```{r setup81, eval=FALSE}
+#Calculem la mitjana de cada variable segons la condicio
+mitjana_leucina_control<-mean(dades$Leucine[dades$Muscle.loss=="control"])
+mitjana_leucina_caquexia<-mean(dades$Leucine[dades$Muscle.loss!="control"])
+mitjana_X4_control<-mean(dades$X4.Hydroxyphenylacetate
+                              [dades$Muscle.loss=="control"])
+mitjana_X4_caquexia<-mean(dades$X4.Hydroxyphenylacetate
+                               [dades$Muscle.loss!="control"])
+mitjana_creatinina_control<-mean(dades$Creatinine[dades$Muscle.loss=="control"])
+mitjana_creatinina_caquexia<-mean(dades$Creatinine[dades$Muscle.loss!="control"])
+mitjana_Uracil_control<-mean(dades$Uracil
+                              [dades$Muscle.loss=="control"])
+mitjana_Uracil_caquexia<-mean(dades$Uracil
+                               [dades$Muscle.loss!="control"])
+
+cat("La concentració mitjana de Leucina en els pacients controls es de",mitjana_leucina_control,"U.A. 
+I en els pacients caquexics és", mitjana_leucina_caquexia,"U.A.\n")
+
+cat("La concentració mitjana de Hydroxypenylacetat en els pacients controls es de",mitjana_X4_control,"U.A. 
+I en els pacients caquexics és", mitjana_X4_caquexia,"U.A.\n")
+
+cat("La concentració mitjana de Creatinina en els pacients controls es de",mitjana_creatinina_control,"U.A. 
+I en els pacients caquexics és", mitjana_creatinina_caquexia,"U.A.\n")
+
+cat("La concentració mitjana d'Uracil en els pacients controls es de",mitjana_Uracil_control,"U.A. 
+I en els pacients caquexics és", mitjana_Uracil_caquexia,"U.A.\n")
+
+```
+
+```{r setup842, eval=FALSE}
+#Calculem el % de diferencia entre una mitjana i l'altre i ho arrodonim.
+leucina_prop<-round(((mitjana_leucina_caquexia-mitjana_leucina_control)/
+                  mitjana_leucina_control)*100,2)
+X4_prop <- round(((mitjana_X4_caquexia - mitjana_X4_control) / 
+                    mitjana_X4_control) * 100, 2)
+creatinina_prop<-round(((mitjana_creatinina_caquexia-mitjana_creatinina_control)                   /mitjana_creatinina_control)*100,2)
+Uracil_prop <- round(((mitjana_Uracil_caquexia - mitjana_Uracil_control) / 
+                    mitjana_Uracil_control) * 100, 2)
+cat("La concentració de Leucina es un", leucina_prop, "% superior en pacients amb caquèxia 
+en comparació al control.\n")
+cat("La concentració de Hydroxypenylacetat es un", X4_prop, "% superior en
+pacients amb  caquèxia en comparació al control.\n")
+cat("La concentració de Creatinina es un", creatinina_prop, "% superior en pacients amb caquèxia 
+en comparació al control.\n")
+cat("La concentració d'Uracil es un", Uracil_prop, "% superior en 
+pacients amb  caquèxia
+en comparació al control.\n")
+```
+
+## ANOVA
+
+Es mostra l'analisis ANOVA realitzat amb les dades no escalades. Del
+qual s'han seleccionat nomes dues variables, una de significativa i una
+que no ho es per proposits educatius.
+
+```{r setup250}
+#Generem un objecte on guardarem els p-valors
+p_values<-numeric(length(noms))
+#Fem un loop per fer l'ANOVA per totes les variables
+for (i in seq_along(noms)){
+  #Amb la funció "as.formula" podem fer una formual dinamica on la variable que anirà canviant es "noms" que prendrà cada valor que té emmagatzemat, en canvi "Muscle.loss" quedarà fixat
+  anova<-aov(as.formula(paste(noms[i],"~ Muscle.loss")),data=dades)
+  #Guardem cada resum que fem
+  resum_model<-summary(anova)
+  #De cada resum en guardem el p_valor corresponent
+  p_values[i]<-resum_model[[1]]["Muscle.loss", "Pr(>F)"]
+}
+#Finalment guardem els noms de les variables amb el p_valor calculat
+resultats_pvalue<-data.frame(Variable=noms, P_value=p_values)
+print(resultats_pvalue)
+
+#Ordenem els valos per veure quines son les variables amb diferencies significatives
+valors_significatius_ordenats<-resultats_pvalue[order(resultats_pvalue$P_value),]
+valors_significatius_ordenats
+#Fem recompte de quantes variables presenten diferencies significatives
+count(valors_significatius_ordenats$P_value<0.05)
 ```
